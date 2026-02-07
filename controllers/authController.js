@@ -67,10 +67,11 @@ const login = async (req, res) => {
     ]);
     // return error if user does not exists
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid credential' });
     }
     // get user if exists
     const user = result.rows[0];
+
     // check password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
@@ -98,4 +99,24 @@ const logout = (req, res) => {
   res.status(200).json({ message: 'Logged out successfully' });
 };
 
-module.exports = { register, login, logout };
+const profile = async (req, res) => {
+  try {
+    // get userId
+    const userId = req.userId;
+    // get user from db
+    const result = await pool.query(
+      'SELECT id, name, email, phone, created_at FROM users WHERE id = $1',
+      [userId],
+    );
+    // check user error
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ user: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { register, login, logout, profile };
