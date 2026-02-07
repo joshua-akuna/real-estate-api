@@ -48,8 +48,54 @@ const register = async (req, res) => {
 
     res.status(201).json({ user });
   } catch (error) {
+    console.error(error);
     return res.status(500).json({ error: error.message });
   }
 };
 
-module.exports = { register };
+const login = async (req, res) => {
+  try {
+    // get user inputs
+    const { email, password } = req.body;
+    // check for user inputs
+    if (!email || !password) {
+      return res.status(400).json({ message: 'All fields are mandatory.' });
+    }
+    // query table for user
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [
+      email,
+    ]);
+    // return error if user does not exists
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    // get user if exists
+    const user = result.rows[0];
+    // check password
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const token = generateToken(user.id);
+    res.cookie('token', token, cookieOptions);
+    res.status(200).json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const logout = (req, res) => {
+  res.clearCookie('token', cookieOptions);
+  res.cookie('token', '', { ...cookieOptions, maxAge: 1 });
+  res.status(200).json({ message: 'Logged out successfully' });
+};
+
+module.exports = { register, login, logout };
