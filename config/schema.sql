@@ -10,11 +10,12 @@ CREATE DATABASE real_estate_db;
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
+  username VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
   phone VARCHAR(20),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create properties table
@@ -23,15 +24,17 @@ CREATE TABLE IF NOT EXISTS properties (
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
   description TEXT,
-  type VARCHAR(10) NOT NULL CHECK (type IN ('sale', 'rent')),
+  type VARCHAR(20) NOT NULL CHECK (type IN ('sale', 'rent')),
+  property_type VARCHAR(50) NOT NULL CHECK (property_type IN ('house', 'apartment', 'condo', 'land', 'commercial')),
   price DECIMAL(12, 2) NOT NULL,
-  bedrooms INTEGER,
-  bathrooms INTEGER,
-  area INTEGER, -- in square feet
-  address VARCHAR(255) NOT NULL,
+  address TEXT NOT NULL,
   city VARCHAR(100) NOT NULL,
-  state VARCHAR(50) NOT NULL,
-  zip_code VARCHAR(10),
+  state VARCHAR(100) NOT NULL,
+  zip_code VARCHAR(20),
+  bedrooms INTEGER,
+  bathrooms DECIMAL(3, 1),
+  area DECIMAL(10, 2),
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'pending', 'sold', 'rented')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -41,42 +44,44 @@ CREATE TABLE IF NOT EXISTS property_images (
   id SERIAL PRIMARY KEY,
   property_id INTEGER REFERENCES properties(id) ON DELETE CASCADE,
   image_url TEXT NOT NULL,
-  display_order INTEGER DEFAULT 0,
+  cloudinary_id VARCHAR(255) NOT NULL,
+  is_primary BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create indexes for better performance
-CREATE INDEX idx_properties_user_id ON properties(user_id);
-CREATE INDEX idx_properties_type ON properties(type);
-CREATE INDEX idx_properties_city ON properties(city);
-CREATE INDEX idx_properties_price ON properties(price);
-CREATE INDEX idx_property_images_property_id ON property_images(property_id);
-CREATE INDEX idx_property_images_display_order ON property_images(display_order);
-
--- Create conversations table
-CREATE TABLE IF NOT EXISTS conversations (
-  id SERIAL PRIMARY KEY,
-  property_id INTEGER REFERENCES properties(id) ON DELETE CASCADE,
-  user1_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  user2_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(property_id, user1_id, user2_id)
 );
 
 -- Create messages table
 CREATE TABLE IF NOT EXISTS messages (
   id SERIAL PRIMARY KEY,
-  conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
   sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  recipient_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  property_id INTEGER REFERENCES properties(id) ON DELETE SET NULL,
   content TEXT NOT NULL,
-  is_read BOOLEAN DEFAULT FALSE,
+  is_read BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for messaging
-CREATE INDEX idx_conversations_user1 ON conversations(user1_id);
-CREATE INDEX idx_conversations_user2 ON conversations(user2_id);
-CREATE INDEX idx_conversations_property ON conversations(property_id);
-CREATE INDEX idx_messages_conversation ON messages(conversation_id);
-CREATE INDEX idx_messages_sender ON messages(sender_id);
-CREATE INDEX idx_messages_created_at ON messages(created_at);
+-- Conversations view (for easier querying)
+CREATE OR REPLACE VIEW conversations AS
+SELECT DISTINCT
+    CASE 
+        WHEN sender_id < recipient_id THEN sender_id 
+        ELSE recipient_id 
+    END AS user1_id,
+    CASE 
+        WHEN sender_id < recipient_id THEN recipient_id 
+        ELSE sender_id 
+    END AS user2_id,
+    property_id,
+    MAX(created_at) AS last_message_at
+FROM messages
+GROUP BY user1_id, user2_id, property_id;
+
+-- Indexes for better performance
+CREATE INDEX idx_properties_user_id ON properties(user_id);
+CREATE INDEX idx_properties_type ON properties(type);
+CREATE INDEX idx_properties_status ON properties(status);
+CREATE INDEX idx_property_images_property_id ON property_images(property_id);
+CREATE INDEX idx_messages_sender_id ON messages(sender_id);
+CREATE INDEX idx_messages_recipient_id ON messages(recipient_id);
+CREATE INDEX idx_messages_property_id ON messages(property_id);
+CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
