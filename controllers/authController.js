@@ -2,6 +2,7 @@ const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const { validationResult } = require('express-validator');
 
 const cookieOptions = {
   httpOnly: true,
@@ -17,20 +18,24 @@ function generateToken(id) {
 
 const register = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     // destruct fields from req.boby
-    const { name, email, password, phone } = req.body;
+    const { username, email, password, phone } = req.body;
     // checks that all fields are available
-    if (!name || !email || !password || !phone) {
+    if (!username || !email || !password || !phone) {
       return res.status(400).json({ error: 'All fields are mandatory.' });
     }
     // checks if user exists
     const userExists = await pool.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email],
+      'SELECT * FROM users WHERE email = $1 OR username = $2',
+      [email, username],
     );
     // return error if user already exists
     if (userExists.rows.length > 0) {
-      return res.status(400).json({ error: 'Email already registered' });
+      return res.status(400).json({ error: 'User already registered' });
     }
     // generate salt rounds
     const salt = await bcrypt.genSalt(10);
@@ -38,23 +43,27 @@ const register = async (req, res) => {
     const hash = await bcrypt.hash(password, salt);
     // store user in database
     const result = await pool.query(
-      'INSERT INTO users (name, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone, created_at',
-      [name, email, hash, phone],
+      'INSERT INTO users (username, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id, username, email, phone, created_at',
+      [username, email, hash, phone],
     );
     // gets new user
     const user = result.rows[0];
 
     res.cookie('token', generateToken(user.id), cookieOptions);
 
-    res.status(201).json({ user });
+    res.status(201).json({ user, message: 'User registered successfully' });
   } catch (error) {
-    console.error(error);
+    console.error('Registration error:', error);
     return res.status(500).json({ error: error.message });
   }
 };
 
 const login = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     // get user inputs
     const { email, password } = req.body;
     // check for user inputs
@@ -79,16 +88,13 @@ const login = async (req, res) => {
     }
     const token = generateToken(user.id);
     res.cookie('token', token, cookieOptions);
+    const { password: _, ...userWithoutPassword } = user; // Exclude password from response
     res.status(200).json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-      },
+      user: userWithoutPassword,
+      message: 'Logged in successfully',
     });
   } catch (error) {
-    console.error(error);
+    console.error('Login error: ', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -105,7 +111,7 @@ const profile = async (req, res) => {
     const userId = req.userId;
     // get user from db
     const result = await pool.query(
-      'SELECT id, name, email, phone, created_at FROM users WHERE id = $1',
+      'SELECT id, username, email, phone, created_at FROM users WHERE id = $1',
       [userId],
     );
     // check user error
@@ -114,7 +120,7 @@ const profile = async (req, res) => {
     }
     res.json({ user: result.rows[0] });
   } catch (error) {
-    console.error(error);
+    console.error('Get current user error:', error);
     res.status(500).json({ error: error.message });
   }
 };
