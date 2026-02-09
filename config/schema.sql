@@ -10,8 +10,8 @@ CREATE DATABASE real_estate_db;
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
-  username VARCHAR(255) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
+  username VARCHAR(75) UNIQUE NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
   phone VARCHAR(20),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -25,12 +25,14 @@ CREATE TABLE IF NOT EXISTS properties (
   title VARCHAR(255) NOT NULL,
   description TEXT,
   type VARCHAR(20) NOT NULL CHECK (type IN ('sale', 'rent')),
-  property_type VARCHAR(50) NOT NULL CHECK (property_type IN ('house', 'apartment', 'condo', 'land', 'commercial')),
+  property_type VARCHAR(50) NOT NULL,
   price DECIMAL(12, 2) NOT NULL,
+  rent_period VARCHAR(20) CHECK (rent_period IN ('day', 'week', 'month', 'year') OR rent_period IS NULL),
   address TEXT NOT NULL,
   city VARCHAR(100) NOT NULL,
   state VARCHAR(100) NOT NULL,
   zip_code VARCHAR(20),
+  country VARCHAR(100) NOT NULL,
   bedrooms INTEGER,
   bathrooms DECIMAL(3, 1),
   area DECIMAL(10, 2),
@@ -80,8 +82,13 @@ GROUP BY user1_id, user2_id, property_id;
 CREATE INDEX idx_properties_user_id ON properties(user_id);
 CREATE INDEX idx_properties_type ON properties(type);
 CREATE INDEX idx_properties_status ON properties(status);
+CREATE INDEX idx_properties_rent_period ON properties(rent_period);
 CREATE INDEX idx_property_images_property_id ON property_images(property_id);
 CREATE INDEX idx_messages_sender_id ON messages(sender_id);
 CREATE INDEX idx_messages_recipient_id ON messages(recipient_id);
 CREATE INDEX idx_messages_property_id ON messages(property_id);
 CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
+
+-- Add constraint to ensure rent_period is set when type is 'rent'
+ALTER TABLE properties ADD CONSTRAINT check_rent_period 
+    CHECK ((type = 'rent' AND rent_period IS NOT NULL) OR (type = 'sale' AND rent_period IS NULL));
