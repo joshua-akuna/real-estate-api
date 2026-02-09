@@ -2,10 +2,129 @@ const pool = require('../config/db');
 const cloudinary = require('../config/cloudinary');
 const { validationResult } = require('express-validator');
 
-const createProperty = async (req, res) => {
+const getProperties = async (req, res) => {
   try {
-    const client = await pool.connect();
+    const {
+      type,
+      city,
+      state,
+      country,
+      min_price,
+      max_price,
+      bedrooms,
+      property_type,
+      rent_period,
+      page = 1,
+      limit = 10,
+    } = req.query;
 
+    let query = `
+      SELECT p.*,
+             u.username as owner_name,
+             u.phone as owner_phone,
+             json_agg(json_build_object('id', pi.id, 'image_url', pi.image_url, 'is_primary', pi.is_primary) ORDER BY pi.is_primary DESC, pi.id) as images
+      FROM properties p
+      LEFT JOIN users u ON p.user_id = u.id
+      LEFT JOIN property_images pi ON p.id = pi.property_id
+      WHERE p.status = 'active'
+    `;
+
+    const params = [];
+    let paramCount = 1;
+
+    if (type) {
+      query += ` AND p.type = $${paramCount}`;
+      params.push(type);
+      paramCount++;
+    }
+
+    if (city) {
+      query += ` AND LOWER(p.city) = LOWER($${paramCount})`;
+      params.push(city);
+      paramCount++;
+    }
+
+    if (state) {
+      query += ` AND LOWER(p.state) = LOWER($${paramCount})`;
+      params.push(state);
+      paramCount++;
+    }
+
+    if (country) {
+      query += ` AND LOWER(p.country) = LOWER($${paramCount})`;
+      params.push(country);
+      paramCount++;
+    }
+
+    if (min_price) {
+      query += ` AND p.price >= $${paramCount}`;
+      params.push(min_price);
+      paramCount++;
+    }
+
+    if (max_price) {
+      query += ` AND p.price <= $${paramCount}`;
+      params.push(max_price);
+      paramCount++;
+    }
+
+    if (bedrooms) {
+      query += ` AND p.bedrooms >= $${paramCount}`;
+      params.push(bedrooms);
+      paramCount++;
+    }
+
+    if (property_type) {
+      query += ` AND LOWER(p.property_type) = LOWER($${paramCount})`;
+      params.push(property_type);
+      paramCount++;
+    }
+
+    if (rent_period) {
+      query += ` AND LOWER(p.rent_period) = LOWER($${paramCount})`;
+      params.push(rent_period);
+      paramCount++;
+    }
+
+    query += ` GROUP BY p.id, u.username, u.phone ORDER BY p.created_at DESC`;
+
+    // Add pagination
+    const offset = (page - 1) * limit;
+    query += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    params.push(limit, offset);
+
+    // Query execution on properties table to get filtered properties
+    const properties = await pool.query(query, params);
+
+    // Get total count
+    let countQuery = `SELECT COUNT(*) FROM properties WHERE status = 'active'`;
+    // Remove limit and offset for count query
+    const countParams = params.slice(0, -2);
+
+    if (countParams.length > 0) {
+      countQuery = query.split('GROUP BY')[0];
+    }
+
+    const totalResult = await pool.query(
+      countQuery.replace('/SELECT.*FROM/', 'SELECT COUNT(DISTINCT p.id) FROM'),
+      countParams,
+    );
+    res.json({
+      properties: properties.rows,
+      total: parseInt(totalResult.rows[0].count),
+      page: parseInt(page),
+      totalPages: Math.ceil(totalResult.rows[0].count / limit),
+    });
+  } catch (error) {
+    console.error('Get Properties Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Create a new property with images upload
+const createProperty = async (req, res) => {
+  const client = await pool.connect();
+  try {
     // check express validator errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -121,12 +240,12 @@ const createProperty = async (req, res) => {
 
     // Fetch the complete property with images to return in response
     const completeProperty = await pool.query(
-      `SELECT p.*,
-              json_agg(json_build_object('id', pi.id, 'image_url', pi.image_url, 'is_primary', pi.is_primary)) ORDER BY pi.is_primary DESC, pi.id) as images
-       FROM properties p
-       LEFT JOIN property_images pi ON p.id = pi.property_id
-       WHERE p.id = $1
-       GROUP BY p.id`,
+      `SELECT p.*, 
+                json_agg(json_build_object('id', pi.id, 'image_url', pi.image_url, 'is_primary', pi.is_primary) ORDER BY pi.is_primary DESC, pi.id) as images
+         FROM properties p
+         LEFT JOIN property_images pi ON p.id = pi.property_id
+         WHERE p.id = $1
+         GROUP BY p.id`,
       [property.id],
     );
 
@@ -143,4 +262,4 @@ const createProperty = async (req, res) => {
   }
 };
 
-module.exports = { createProperty };
+module.exports = { createProperty, getProperties };

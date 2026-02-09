@@ -4,14 +4,17 @@ const { body } = require('express-validator');
 
 const upload = require('../middleware/upload');
 const authenticate = require('../middleware/authenticate');
-const { createProperty } = require('../controllers/propertyControllers');
+const {
+  getProperties,
+  createProperty,
+} = require('../controllers/propertyControllers');
 
 // Validation rules for property creation
 const propertyValidationRules = [
   body('title').trim().notEmpty().withMessage('Title is required'),
   body('description').optional().trim(),
   body('type').isIn(['sale', 'rent']).withMessage('Type must be sale or rent'),
-  body('property-type')
+  body('property_type')
     .trim()
     .notEmpty()
     .withMessage('Property type is required.'),
@@ -37,9 +40,7 @@ const propertyValidationRules = [
 ];
 
 // public routes
-router.get('/', (req, res) => {
-  res.json({ message: 'List of properties' });
-});
+router.get('/', getProperties);
 
 router.get('/:id', (req, res) => {
   const propertyId = req.params.id;
