@@ -121,6 +121,34 @@ const getProperties = async (req, res) => {
   }
 };
 
+// Get a single property by ID
+const getPropertyById = async (req, res) => {
+  try {
+    // gets the property id from req params
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT p.*, 
+              u.username as owner_name,
+              u.email as owner_email,
+              u.phone as owner_phone,
+              json_agg(json_build_object('id', pi.id, 'image_url', pi.image_url, 'is_primary', pi.is_primary) ORDER BY pi.is_primary DESC, pi.id) as images
+       FROM properties p
+       LEFT JOIN users u ON p.user_id = u.id
+       LEFT JOIN property_images pi ON p.id = pi.property_id
+       WHERE p.id = $1
+       GROUP BY p.id, u.username, u.email, u.phone`,
+      [id],
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Get Property by ID Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Create a new property with images upload
 const createProperty = async (req, res) => {
   const client = await pool.connect();
@@ -262,4 +290,56 @@ const createProperty = async (req, res) => {
   }
 };
 
-module.exports = { createProperty, getProperties };
+// Delete a property by ID
+const deleteProperty = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const { id } = req.params;
+
+    // Check if property exists and belongs to the user
+    const ownership = await client.query(
+      'SELECT user_id FROM properties WHERE id = $1',
+      [id],
+    );
+    if (ownership.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Property not found' });
+    }
+
+    if (ownership.rows[0].user_id !== req.userId) {
+      await client.query('ROLLBACK');
+      return res
+        .status(403)
+        .json({ error: 'Unauthorized to delete this property' });
+    }
+    // Get all images to delete from Cloudinary
+    const images = await client.query(
+      'SELECT cloudinary_id FROM property_images WHERE property_id = $1',
+      [id],
+    );
+    // Delete images from Cloudinary
+    const deletePromises = images.rows.map((img) =>
+      cloudinary.uploader.destroy(img.cloudinary_id),
+    );
+    await Promise.all(deletePromises);
+
+    // Delete property (cascade will delete images from DB)
+    await client.query('DELETE FROM properties WHERE id = $1', [id]);
+    await client.query('COMMIT');
+    res.status(200).json({ message: 'Property deleted successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Delete Property Error:', error);
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+};
+
+module.exports = {
+  createProperty,
+  getProperties,
+  getPropertyById,
+  deleteProperty,
+};

@@ -7,6 +7,8 @@ const authenticate = require('../middleware/authenticate');
 const {
   getProperties,
   createProperty,
+  getPropertyById,
+  deleteProperty,
 } = require('../controllers/propertyControllers');
 
 // Validation rules for property creation
@@ -42,10 +44,7 @@ const propertyValidationRules = [
 // public routes
 router.get('/', getProperties);
 
-router.get('/:id', (req, res) => {
-  const propertyId = req.params.id;
-  res.json({ message: `Details of property with ID: ${propertyId}` });
-});
+router.get('/:id', getPropertyById);
 
 // protected routes
 router.post(
@@ -56,14 +55,11 @@ router.post(
   createProperty,
 );
 
+router.delete('/:id', authenticate, deleteProperty);
+
 router.put('/:id', (req, res) => {
   const propertyId = req.params.id;
   res.json({ message: `Property with ID: ${propertyId} updated` });
-});
-
-router.delete('/:id', (req, res) => {
-  const propertyId = req.params.id;
-  res.json({ message: `Property with ID: ${propertyId} deleted` });
 });
 
 module.exports = router;
