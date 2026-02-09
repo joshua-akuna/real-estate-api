@@ -35,7 +35,7 @@ const register = async (req, res) => {
     );
     // return error if user already exists
     if (userExists.rows.length > 0) {
-      return res.status(400).json({ error: 'User already registered' });
+      return res.status(400).json({ error: 'User already exists' });
     }
     // generate salt rounds
     const salt = await bcrypt.genSalt(10);
@@ -76,7 +76,7 @@ const login = async (req, res) => {
     ]);
     // return error if user does not exists
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credential' });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
     // get user if exists
     const user = result.rows[0];
@@ -86,7 +86,9 @@ const login = async (req, res) => {
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+    // generate token
     const token = generateToken(user.id);
+    // set token in cookie
     res.cookie('token', token, cookieOptions);
     const { password: _, ...userWithoutPassword } = user; // Exclude password from response
     res.status(200).json({
@@ -94,7 +96,7 @@ const login = async (req, res) => {
       message: 'Logged in successfully',
     });
   } catch (error) {
-    console.error('Login error: ', error);
+    console.error('Login error:', error);
     res.status(500).json({ error: error.message });
   }
 };
