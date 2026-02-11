@@ -10,10 +10,14 @@ CREATE DATABASE real_estate_db;
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
-  username VARCHAR(75) UNIQUE NOT NULL,
+  username VARCHAR(50) UNIQUE NOT NULL,
   email VARCHAR(100) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
   phone VARCHAR(20),
+  google_id VARCHAR(255) UNIQUE,
+  profile_picture TEXT,
+  reset_token VARCHAR(255),
+  reset_token_expiry TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -62,33 +66,30 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Conversations view (for easier querying)
-CREATE OR REPLACE VIEW conversations AS
-SELECT DISTINCT
-    CASE 
-        WHEN sender_id < recipient_id THEN sender_id 
-        ELSE recipient_id 
-    END AS user1_id,
-    CASE 
-        WHEN sender_id < recipient_id THEN recipient_id 
-        ELSE sender_id 
-    END AS user2_id,
-    property_id,
-    MAX(created_at) AS last_message_at
-FROM messages
-GROUP BY user1_id, user2_id, property_id;
+CREATE TABLE IF NOT EXISTS favorites (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  property_id INTEGER REFERENCES properties(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, property_id)
+);
 
--- Indexes for better performance
-CREATE INDEX idx_properties_user_id ON properties(user_id);
-CREATE INDEX idx_properties_type ON properties(type);
-CREATE INDEX idx_properties_status ON properties(status);
-CREATE INDEX idx_properties_rent_period ON properties(rent_period);
-CREATE INDEX idx_property_images_property_id ON property_images(property_id);
-CREATE INDEX idx_messages_sender_id ON messages(sender_id);
-CREATE INDEX idx_messages_recipient_id ON messages(recipient_id);
-CREATE INDEX idx_messages_property_id ON messages(property_id);
-CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
-
--- Add constraint to ensure rent_period is set when type is 'rent'
+-- Constraints
+-- Constraints
+ALTER TABLE properties DROP CONSTRAINT IF EXISTS check_rent_period;
 ALTER TABLE properties ADD CONSTRAINT check_rent_period 
     CHECK ((type = 'rent' AND rent_period IS NOT NULL) OR (type = 'sale' AND rent_period IS NULL));
+
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_properties_user_id ON properties(user_id);
+CREATE INDEX IF NOT EXISTS idx_properties_type ON properties(type);
+CREATE INDEX IF NOT EXISTS idx_properties_status ON properties(status);
+CREATE INDEX IF NOT EXISTS idx_properties_rent_period ON properties(rent_period);
+CREATE INDEX IF NOT EXISTS idx_properties_city ON properties(city);
+CREATE INDEX IF NOT EXISTS idx_property_images_property_id ON property_images(property_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_recipient_id ON messages(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_property_id ON favorites(property_id);
+CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token);
