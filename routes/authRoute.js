@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const authenticate = require('../middleware/authenticate');
+const passport = require('passport');
+
 const {
   register,
   login,
   logout,
   profile,
+  googleCallback,
 } = require('../controllers/authController');
+const authenticate = require('../middleware/authenticate');
 
 // Validation rules
 const registerValidation = [
@@ -32,5 +35,20 @@ router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
 router.get('/logout', logout);
 router.get('/profile', authenticate, profile);
+
+// Google OAuth routes
+router.get(
+  '/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] }),
+);
+
+router.get(
+  '/google/callback',
+  passport.authenticate('google', {
+    failureRedirect: `${process.env.FRONTEND_URL_DEV}/login?error=auth_failed`,
+    session: false,
+  }),
+  googleCallback,
+);
 
 module.exports = router;

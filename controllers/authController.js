@@ -43,8 +43,8 @@ const register = async (req, res) => {
     const hash = await bcrypt.hash(password, salt);
     // store user in database
     const result = await pool.query(
-      'INSERT INTO users (username, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id, username, email, phone, created_at',
-      [username, email, hash, phone],
+      'INSERT INTO users (username, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id, username, email, phone, profile_picture, created_at',
+      [username, email, hash, phone || null],
     );
     // gets new user
     const user = result.rows[0];
@@ -81,6 +81,13 @@ const login = async (req, res) => {
     // get user if exists
     const user = result.rows[0];
 
+    // check if user has password (i.e., not a Google login)
+    if (!user.password) {
+      return res.status(401).json({
+        error: 'This account uses Google login. Please log in with Google.',
+      });
+    }
+
     // check password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
@@ -98,6 +105,22 @@ const login = async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+const googleCallback = (req, res) => {
+  try {
+    if (!req.user.id) {
+      throw new Error('Google authentication failed. No user id');
+    }
+    const token = generateToken(req.user.id);
+    res.cookie('token', token, cookieOptions);
+    res.redirect(`${process.env.FRONTEND_URL_DEV}?auth=success`);
+    // res.status(200).json({ message: 'Google authentication successful' });
+  } catch (error) {
+    console.error('Google OAuth callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL_DEV}/login?error=auth_failed`);
+    // res.status(500).json({ error: error.message });
   }
 };
 
@@ -127,4 +150,4 @@ const profile = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, profile };
+module.exports = { register, login, logout, profile, googleCallback };

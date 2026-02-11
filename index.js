@@ -4,8 +4,8 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 
-// const passport = require('./config/passport');
-const passport = require('passport');
+const passport = require('./config/passport');
+// const passport = require('passport');
 
 const propertiesRouter = require('./routes/propertyRoute');
 const authRouter = require('./routes/authRoute');
@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173', // React frontend URL
+    origin: process.env.FRONTEND_URL_DEV || 'http://localhost:5173', // React frontend URL
     credentials: true, // Allow cookies
   }),
 );
