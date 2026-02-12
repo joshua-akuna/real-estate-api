@@ -1,7 +1,9 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const { sendResetEmail } = require('../config/email');
 const { validationResult } = require('express-validator');
 
 const cookieOptions = {
@@ -150,4 +152,39 @@ const profile = async (req, res) => {
   }
 };
 
-module.exports = { register, login, logout, profile, googleCallback };
+// business logic for forgor password
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    const userResult = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email],
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 3600000).toISOString(); // 1 hour
+    await pool.query(
+      `UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE email = $3`,
+      [resetToken, resetTokenExpiry, email],
+    );
+    await sendResetEmail(email, resetToken);
+    res.status(200).json({ message: 'Password reset email sent' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = {
+  register,
+  login,
+  logout,
+  profile,
+  googleCallback,
+  forgotPassword,
+};

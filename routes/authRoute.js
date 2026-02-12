@@ -9,6 +9,7 @@ const {
   logout,
   profile,
   googleCallback,
+  forgotPassword,
 } = require('../controllers/authController');
 const authenticate = require('../middleware/authenticate');
 
@@ -50,5 +51,8 @@ router.get(
   }),
   googleCallback,
 );
+
+// password reset route
+router.post('/forgot-password', forgotPassword);
 
 module.exports = router;
