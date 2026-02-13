@@ -100,4 +100,31 @@ const deleteMultipleImages = async (publicIds) => {
   }
 };
 
-module.exports = cloudinary;
+/**
+ * update image (replace existing image with new one)
+ * @param {string} publicId - Existing image public_id to replace
+ * @param {Buffer} buffer - New image buffer
+ * @param {Promise<Object>} - Upload result
+ */
+const updateImage = async (publicId, buffer) => {
+  try {
+    // Delete existing image
+    await deleteImage(publicId);
+    // upload new image with same public_id
+    const result = await uploadImage(buffer, 'properties', {
+      public_id: publicId,
+    });
+    return result;
+  } catch (error) {
+    console.error('Error updating image:', error);
+    throw new Error('Failed to update image');
+  }
+};
+
+module.exports = {
+  cloudinary,
+  uploadImage,
+  uploadMultipleImages,
+  deleteImage,
+  deleteMultipleImages,
+};
