@@ -123,10 +123,25 @@ const setTokenCookie = (res, token) => {
   });
 };
 
+/**
+ * Clear authentication cookie
+ * @param {Object} res - Express response object
+ */
+const clearTokenCookie = (res) => {
+  res.cookie('token', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    expires: new Date(0),
+    path: '/',
+  });
+};
+
 module.exports = {
   authenticate,
   optionalAuth,
   adminOnly,
   generateToken,
   setTokenCookie,
+  clearTokenCookie,
 };
