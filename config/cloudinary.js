@@ -104,7 +104,7 @@ const deleteMultipleImages = async (publicIds) => {
  * update image (replace existing image with new one)
  * @param {string} publicId - Existing image public_id to replace
  * @param {Buffer} buffer - New image buffer
- * @param {Promise<Object>} - Upload result
+ * @returns {Promise<Object>} - Upload result
  */
 const updateImage = async (publicId, buffer) => {
   try {
@@ -121,10 +121,38 @@ const updateImage = async (publicId, buffer) => {
   }
 };
 
+/**
+ * Get image details
+ * @param {string} publicId - Cloudinary public_id of the image
+ * @returns {Promise<Object>} - Image details including secure_url
+ */
+const getImageDetails = async (publicId) => {
+  try {
+    const result = await cloudinary.api.resource(publicId);
+    return result;
+  } catch (error) {
+    console.error('Error fetching image details:', error);
+    throw new Error('Failed to fetch image details');
+  }
+};
+
+/**
+ * Generate transformation URL
+ * @param {String} publicId - Cloudinary public ID
+ * @param {Object} transformations - Transformation options
+ * @returns
+ */
+const getTransformedUrl = (publicId, transformations = {}) => {
+  return cloudinary.url(publicId, transformations);
+};
+
 module.exports = {
   cloudinary,
   uploadImage,
   uploadMultipleImages,
   deleteImage,
   deleteMultipleImages,
+  updateImage,
+  getImageDetails,
+  getTransformedUrl,
 };
