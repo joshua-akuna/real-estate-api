@@ -49,4 +49,35 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-module.exports = authenticate;
+/**
+ * Optional auth middleware - doesn't fail if no token
+ * Useful for the routes that work for both authentication and unauthenticated users
+ */
+const optionalAuth = async (req, res, next) => {
+  try {
+    // get token from cookies
+    const token = req.cookies.token;
+    // go to next middleware if token does not exist
+    if (!token) {
+      req.user = null;
+      return next();
+    }
+    // verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // get the user using the userId
+    const result = await query(
+      `SELECT id, email, full_name, avatar_url, role, is_verified 
+      FROM users
+      WHERE id=$1`,
+      [decoded.userId],
+    );
+    req.user = result.rows.length > 0 ? result.rows[0] : null;
+    next();
+  } catch (error) {
+    // If token is invalid, just continue without user
+    req.user = null;
+    next();
+  }
+};
+
+module.exports = { authenticate, optionalAuth };
