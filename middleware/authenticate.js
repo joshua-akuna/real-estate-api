@@ -80,4 +80,23 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticate, optionalAuth };
+/**
+ * Admin role check middleware
+ * Must be used after authenticate middleware
+ */
+const adminOnly = (req, res, next) => {
+  // if user does not exist
+  if (!req.user) {
+    return res
+      .status(401)
+      .json({ message: 'Access denied. Authentication required' });
+  }
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json('Access denied. Admin privileges required');
+  }
+
+  next();
+};
+
+module.exports = { authenticate, optionalAuth, adminOnly };
