@@ -1,54 +1,78 @@
+// ============================================
+// PASSPORT CONFIGURATION
+// Google OAuth Strategy
+// ============================================
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const pool = require('../config/db');
 require('dotenv').config();
+const { query } = require('../config/db');
 
+// ============================================
+// GOOGLE OAUTH STRATEGY
+// ============================================
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_CALLBACK_URL_DEV,
+      scope: ['profile', 'email'],
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        // checks if user exists
-        const existingUser = await pool.query(
-          'SELECT * FROM users WHERE google_id = $1',
-          [profile.id],
-        );
+        const email = profile.emails[0].value;
+        const googleId = profile.id;
+        const fullName = profile.displayName;
+        const avatarUrl =
+          profile.photos && profile.photos.length > 0
+            ? profile.photos[0].value
+            : null;
 
-        // if user exists
-        if (existingUser.rows.length > 0) {
-          return done(null, existingUser.rows[0]);
+        // checks if user exists with this google id
+        let result = await query('SELECT * FROM users WHERE google_id = $1', [
+          googleId,
+        ]);
+
+        let user;
+
+        if (result.rows.length > 0) {
+          // User exists, update avatar if change
+          user = result.rows[0];
+
+          if (user.avatar_url !== avatarUrl) {
+            await query(
+              'UPDATE users Set avatar_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+              [avatarUrl, user.id],
+            );
+            user.avatar_url = avatarUrl; // Update the user object with the new avatar URL
+          }
+        } else {
+          // Check if user exists with this email (registered via email/password)
+          result = await query('SELECT * FROM users WHERE email = $1', [email]);
+
+          if (result.rows.length > 0) {
+            // User exists with this email, link Google account
+            user = result.rows[0];
+            await query(
+              'UPDATE users SET google_id = $1, avatar_url = $2, is_verified = true updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+              [googleId, avatarUrl, user.id],
+            );
+            user.google_id = googleId; // Update the user object with the Google ID
+            user.avatar_url = avatarUrl; // Update the user object with the new avatar URL
+            user.is_verified = true; // Update the user object to reflect that the email is now verified
+          } else {
+            // User does not exist, create new user
+            result = await query(
+              `INSERT INTO users (email, google_id, full_name, avatar_url, is_verified) 
+              VALUES ($1, $2, $3, $4, true) 
+              RETURNING *`,
+              [email, googleId, fullName, avatarUrl],
+            );
+            user = result.rows[0];
+          }
         }
 
-        const emailExists = await pool.query(
-          'SELECT * FROM users WHERE email = $1',
-          [profile.emails[0].value],
-        );
-
-        if (emailExists.rows.length > 0) {
-          // update google_id for existing user
-          const updatedUser = await pool.query(
-            'UPDATE users SET google_id = $1, profile_picture = $2 WHERE email = $3 RETURNING *',
-            [profile.id, profile.photos[0]?.value, profile.emails[0].value],
-          );
-          return done(null, updatedUser.rows[0]);
-        }
-
-        // if user doesn't exist, create new user
-        const newUser = await pool.query(
-          `INSERT INTO users (username, email, google_id, profile_picture) VALUES ($1, $2, $3, $4) RETURNING *`,
-          [
-            profile.displayName || profile.emails[0].value.split('@')[0],
-            profile.emails[0].value,
-            profile.id,
-            profile.photos[0]?.value,
-          ],
-        );
-
-        return done(null, newUser.rows[0]);
+        return done(null, user);
       } catch (error) {
         return done(error, null);
       }
@@ -56,10 +80,20 @@ passport.use(
   ),
 );
 
+// ============================================
+// SERIALIZE/DESERIALIZE USER
+// ============================================
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
   try {
-    const user = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    // const user = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    const result = await query(
+      'SELECT id, email, full_name, avatar_url, role FROM users WHERE id = $1',
+      [id],
+    );
+    if (result.rows.length === 0) {
+      return done(null, false);
+    }
     done(null, user.rows[0]);
   } catch (error) {
     done(error, null);
