@@ -99,12 +99,21 @@ const adminOnly = (req, res, next) => {
       .status(401)
       .json({ message: 'Access denied. Authentication required' });
   }
-
+  // check if user is admin
   if (req.user.role !== 'admin') {
     return res.status(403).json('Access denied. Admin privileges required');
   }
-
+  // move to next middleware
   next();
 };
 
-module.exports = { authenticate, optionalAuth, adminOnly };
+/**
+ * Generate JWT token
+ * @param {Number} userId - User ID
+ * @returns {String} JWT token
+ */
+const generateToken = (userId) => {
+  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
+
+module.exports = { authenticate, optionalAuth, adminOnly, generateToken };
