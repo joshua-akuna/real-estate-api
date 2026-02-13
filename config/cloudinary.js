@@ -46,4 +46,26 @@ const uploadImage = (buffer, folder = 'properties', options = {}) => {
   });
 };
 
+/**
+ * Upload multiple images to Cloudinary
+ * @param {Array} files - Array of file objects with buffer
+ * @param {string} folder - Cloudinary folder name
+ * @returns {Promise<Array>} - Array of upload results
+ */
+const uploadMultipleImages = async (files, folder = 'properties') => {
+  const uploadPromises = files.map((file, index) =>
+    uploadImage(file.buffer, folder, {
+      public_id: `${folder}_${Date.now()}_${index}`,
+    }),
+  );
+
+  try {
+    const results = await Promise.all(uploadPromises);
+    return results;
+  } catch (error) {
+    console.error('Error uploading multiple images:', error);
+    throw new Error('Failed to upload multiple images');
+  }
+};
+
 module.exports = cloudinary;
