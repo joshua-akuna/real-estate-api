@@ -7,6 +7,14 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { query } = require('../config/db');
 
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  expires: 1,
+  path: '/',
+};
+
 /**
  * Verify JWT token from HTTP-only cookie
  * Attaches user data to req.user
