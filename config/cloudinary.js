@@ -83,4 +83,21 @@ const deleteImage = async (publicId) => {
   }
 };
 
+/**
+ * Delete multiple images from Cloudinary
+ * @param {Array} publicIds - Array of Cloudinary public_ids to delete
+ * @returns {Promise<Array>} - Deletion results
+ */
+const deleteMultipleImages = async (publicIds) => {
+  const deletePromises = publicIds.map((publicId) => deleteImage(publicId));
+
+  try {
+    const results = await Promise.all(deletePromises);
+    return results;
+  } catch (error) {
+    console.error('Error deleting multiple images:', error);
+    throw new Error('Failed to delete multiple images');
+  }
+};
+
 module.exports = cloudinary;
