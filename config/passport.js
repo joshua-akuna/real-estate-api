@@ -54,7 +54,7 @@ passport.use(
             // User exists with this email, link Google account
             user = result.rows[0];
             await query(
-              'UPDATE users SET google_id = $1, avatar_url = $2, is_verified = true updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+              'UPDATE users SET google_id = $1, avatar_url = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
               [googleId, avatarUrl, user.id],
             );
             user.google_id = googleId; // Update the user object with the Google ID
@@ -63,8 +63,8 @@ passport.use(
           } else {
             // User does not exist, create new user
             result = await query(
-              `INSERT INTO users (email, google_id, full_name, avatar_url, is_verified) 
-              VALUES ($1, $2, $3, $4, true) 
+              `INSERT INTO users (email, google_id, full_name, avatar_url) 
+              VALUES ($1, $2, $3, $4) 
               RETURNING *`,
               [email, googleId, fullName, avatarUrl],
             );
