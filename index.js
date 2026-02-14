@@ -43,6 +43,7 @@ app.use(passport.session());
 app.use('/api/v1/auth', authRoutes);
 // app.use('/api/v1/properties', propertyRoutes);
 
+// Health check
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'OK', message: 'Real Estate API', timestamp: new Date() });
 });
