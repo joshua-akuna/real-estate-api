@@ -74,6 +74,7 @@ const register = async (req, res, next) => {
 
 const login = async (req, res) => {
   try {
+    // check validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -85,40 +86,41 @@ const login = async (req, res) => {
       return res.status(400).json({ message: 'All fields are mandatory.' });
     }
     // query table for user
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [
-      email,
-    ]);
+    const result = await query('SELECT * FROM users WHERE email = $1', [email]);
     // return error if user does not exists
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
     // get user if exists
     const user = result.rows[0];
 
     // check if user has password (i.e., not a Google login)
-    if (!user.password) {
+    if (!user.password_hash) {
       return res.status(401).json({
-        error: 'This account uses Google login. Please log in with Google.',
+        message: 'This account uses Google login. Please log in with Google.',
       });
     }
 
     // check password
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
     // generate token
     const token = generateToken(user.id);
     // set token in cookie
     res.cookie('token', token, cookieOptions);
-    const { password: _, ...userWithoutPassword } = user; // Exclude password from response
+    // Remove password from response
+    delete user.password_hash;
+    delete user.reset_token;
+    delete user.reset_token_expires;
+    // send response
     res.status(200).json({
-      user: userWithoutPassword,
+      user: user,
       message: 'Logged in successfully',
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
