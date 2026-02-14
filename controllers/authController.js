@@ -147,10 +147,10 @@ const logout = (req, res) => {
 const profile = async (req, res) => {
   try {
     // get userId
-    const userId = req.userId;
+    const userId = req.user.userId;
     // get user from db
-    const result = await pool.query(
-      'SELECT id, username, email, phone, created_at FROM users WHERE id = $1',
+    const result = await query(
+      'SELECT id, full_name, email, phone, created_at FROM users WHERE id = $1',
       [userId],
     );
     // check user error
