@@ -5,10 +5,10 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 
 const passport = require('./config/passport');
-// const passport = require('passport');
+const errorHandler = require('./middleware/errorHandler');
 
-const propertiesRouter = require('./routes/propertyRoute');
-const authRouter = require('./routes/authRoute');
+const authRoutes = require('./routes/authRoute');
+const propertyRoutes = require('./routes/propertyRoute');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,12 +39,21 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use('/api/v1/auth', authRouter);
-app.use('/api/v1/properties', propertiesRouter);
+// Routes
+app.use('/api/v1/auth', authRoutes);
+// app.use('/api/v1/properties', propertyRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'OK', message: 'Real Estate API', timestamp: new Date() });
 });
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ message: 'Route not found' });
+});
+
+// Global error handler
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
