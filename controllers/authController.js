@@ -3,13 +3,16 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+
+const { query } = require('../config/db');
 const { sendResetEmail } = require('../config/email');
+const { uploadToCloudinary } = require('../service/cloudinaryService');
 const { validationResult } = require('express-validator');
 
 const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
+  sameSite: 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
@@ -18,23 +21,23 @@ function generateToken(id) {
   return jwt.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 }
 
-const register = async (req, res) => {
+const register = async (req, res, next) => {
   try {
+    // checks for validator errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
     // destruct fields from req.boby
-    const { username, email, password, phone } = req.body;
+    const { full_name, email, password, phone } = req.body;
     // checks that all fields are available
-    if (!username || !email || !password || !phone) {
+    if (!full_name || !email || !password || !phone) {
       return res.status(400).json({ error: 'All fields are mandatory.' });
     }
     // checks if user exists
-    const userExists = await pool.query(
-      'SELECT * FROM users WHERE email = $1 OR username = $2',
-      [email, username],
-    );
+    const userExists = await query('SELECT * FROM users WHERE email = $1', [
+      email,
+    ]);
     // return error if user already exists
     if (userExists.rows.length > 0) {
       return res.status(400).json({ error: 'User already exists' });
@@ -43,10 +46,20 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     // hash user password
     const hash = await bcrypt.hash(password, salt);
+
+    // Handle avatar upload if provided
+    let avatarUrl = null;
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer, 'avatars');
+      avatarUrl = result.secure_url;
+    }
+
     // store user in database
-    const result = await pool.query(
-      'INSERT INTO users (username, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING id, username, email, phone, profile_picture, created_at',
-      [username, email, hash, phone || null],
+    const result = await query(
+      `INSERT INTO users (email, password_hash, full_name, phone, avatar_url) 
+      VALUES ($1, $2, $3, $4, $5) 
+      RETURNING id, email, full_name, phone, avatar_url, created_at`,
+      [email, hash, full_name, phone || null, avatarUrl],
     );
     // gets new user
     const user = result.rows[0];
@@ -55,8 +68,7 @@ const register = async (req, res) => {
 
     res.status(201).json({ user, message: 'User registered successfully' });
   } catch (error) {
-    console.error('Registration error:', error);
-    return res.status(500).json({ error: error.message });
+    next(error);
   }
 };
 
@@ -112,8 +124,8 @@ const login = async (req, res) => {
 
 const googleCallback = (req, res) => {
   try {
-    if (!req.user.id) {
-      throw new Error('Google authentication failed. No user id');
+    if (!req.user) {
+      throw new Error('Google authentication failed. No user');
     }
     const token = generateToken(req.user.id);
     res.cookie('token', token, cookieOptions);
@@ -186,5 +198,4 @@ module.exports = {
   logout,
   profile,
   googleCallback,
-  forgotPassword,
 };

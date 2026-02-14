@@ -27,7 +27,7 @@ const query = async (text, params) => {
     const duration = Date.now() - start;
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('Executed query', { text, duration, rows: res.rowCount });
+      console.log('Executed query', { text, duration, rows: result.rowCount });
     }
     return result;
   } catch (err) {
