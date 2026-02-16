@@ -126,12 +126,10 @@ const login = async (req, res) => {
 
 const googleCallback = (req, res) => {
   try {
-    if (!req.user) {
-      throw new Error('Google authentication failed. No user');
-    }
     const token = generateToken(req.user.id);
     res.cookie('token', token, cookieOptions);
-    res.redirect(`${process.env.FRONTEND_URL_DEV}?auth=success`);
+    // res.redirect(`${process.env.FRONTEND_URL_DEV}/properties?auth=success`);
+    res.redirect(`${process.env.FRONTEND_URL_DEV}/properties?auth=success`);
     // res.status(200).json({ message: 'Google authentication successful' });
   } catch (error) {
     console.error('Google OAuth callback error:', error);

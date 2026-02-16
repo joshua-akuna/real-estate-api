@@ -22,7 +22,7 @@ const loginValidation = [
 // routes
 router.post('/register', upload.single('avatar'), registerValidator, register);
 router.post('/login', loginValidation, login);
-router.get('/logout', logout);
+router.post('/logout', logout);
 router.get('/profile', authenticate, profile);
 
 // Google OAuth routes
