@@ -16,4 +16,9 @@ const registerValidator = [
     .withMessage('Valid phone number required'),
 ];
 
-module.exports = { registerValidator };
+const loginValidator = [
+  body('email').isEmail().normalizeEmail().withMessage('Invalid email'),
+  body('password').notEmpty().withMessage('Password is required'),
+];
+
+module.exports = { registerValidator, loginValidator };
