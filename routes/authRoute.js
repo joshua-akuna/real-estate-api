@@ -12,16 +12,14 @@ const {
   profile,
   googleCallback,
 } = require('../controllers/authController');
-const { registerValidator } = require('../middleware/validators');
-
-const loginValidation = [
-  body('email').isEmail().normalizeEmail().withMessage('Invalid email'),
-  body('password').notEmpty().withMessage('Password is required'),
-];
+const {
+  registerValidator,
+  loginValidator,
+} = require('../middleware/validators');
 
 // routes
 router.post('/register', upload.single('avatar'), registerValidator, register);
-router.post('/login', loginValidation, login);
+router.post('/login', loginValidator, login);
 router.post('/logout', logout);
 router.get('/profile', authenticate, profile);
 

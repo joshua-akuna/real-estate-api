@@ -31,8 +31,8 @@ const register = async (req, res, next) => {
     // destruct fields from req.boby
     const { full_name, email, password, phone } = req.body;
     // checks that all fields are available
-    if (!full_name || !email || !password || !phone) {
-      return res.status(400).json({ error: 'All fields are mandatory.' });
+    if (!full_name || !email || !password) {
+      return res.status(400).json({ message: 'All fields are mandatory.' });
     }
     // checks if user exists
     const userExists = await query('SELECT * FROM users WHERE email = $1', [
@@ -40,7 +40,7 @@ const register = async (req, res, next) => {
     ]);
     // return error if user already exists
     if (userExists.rows.length > 0) {
-      return res.status(400).json({ error: 'User already exists' });
+      return res.status(400).json({ message: 'User already exists' });
     }
     // generate salt rounds
     const salt = await bcrypt.genSalt(10);
@@ -128,11 +128,10 @@ const googleCallback = (req, res) => {
   try {
     const token = generateToken(req.user.id);
     res.cookie('token', token, cookieOptions);
-    // res.redirect(`${process.env.FRONTEND_URL_DEV}/properties?auth=success`);
     res.redirect(`${process.env.FRONTEND_URL_DEV}/properties?auth=success`);
     // res.status(200).json({ message: 'Google authentication successful' });
   } catch (error) {
-    console.error('Google OAuth callback error:', error);
+    // console.error('Google OAuth callback error:', error);
     res.redirect(`${process.env.FRONTEND_URL_DEV}/login?error=auth_failed`);
     // res.status(500).json({ error: error.message });
   }
