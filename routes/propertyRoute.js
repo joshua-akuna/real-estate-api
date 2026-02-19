@@ -10,18 +10,18 @@ const {
   updateProperty,
   getPropertyById,
   deleteProperty,
+  getUserProperties,
 } = require('../controllers/propertyControllers');
 const {
   creatPropertyValidators,
   updatePropertyValidator,
   deletePropertyValidator,
+  paginationValidator,
+  getPropertyValidator,
 } = require('../middleware/validators');
 
-// public routes
-router.get('/', getProperties);
-router.get('/:id', getPropertyById);
-
 // protected routes
+router.get('/my-properties', authenticate, getUserProperties);
 router.post(
   '/',
   authenticate,
@@ -31,5 +31,9 @@ router.post(
 );
 router.put('/:id', authenticate, updatePropertyValidator, updateProperty);
 router.delete('/:id', authenticate, deletePropertyValidator, deleteProperty);
+
+// public routes
+router.get('/', paginationValidator, getProperties);
+router.get('/:id', getPropertyValidator, getPropertyById);
 
 module.exports = router;

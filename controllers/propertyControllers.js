@@ -8,6 +8,13 @@ const {
 
 const getProperties = async (req, res, next) => {
   try {
+    // check express validator errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      // console.log(errors.array());
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 12;
     const offset = (page - 1) * limit;
@@ -34,7 +41,7 @@ const getProperties = async (req, res, next) => {
 
     if (city) {
       whereConditions.push(`LOWER(p.city) = LOWER($${paramCount})`);
-      queryParams.push(property_type);
+      queryParams.push(city);
       paramCount++;
     }
 
@@ -96,6 +103,8 @@ const getProperties = async (req, res, next) => {
        LIMIT $${paramCount} OFFSET $${paramCount + 1}`,
       [...queryParams, limit, offset],
     );
+    console.log(whereClause, queryParams);
+
     // returns a response
     res.status(201).json({
       properties: result.rows,
@@ -116,6 +125,12 @@ const getProperties = async (req, res, next) => {
 // Get a single property by ID
 const getPropertyById = async (req, res, next) => {
   try {
+    // check express validator errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      // console.log(errors.array());
+      return res.status(400).json({ errors: errors.array() });
+    }
     // gets the property id from req params
     const { id } = req.params;
     const result = await pool.query(
@@ -150,6 +165,35 @@ const getPropertyById = async (req, res, next) => {
     console.error('Get Property by ID Error:', error);
     next(error);
     // res.status(500).json({ error: error.message });
+  }
+};
+
+// gets all the properties for a particular user
+const getUserProperties = async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT 
+        p.*,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', pi.id,
+              'image_url', pi.image_url,
+              'image_order', pi.image_order
+            ) ORDER BY pi.image_order
+          ) FILTER (WHERE pi.id IS NOT NULL),
+          '[]'
+        ) as images
+       FROM properties p
+       LEFT JOIN property_images pi ON p.id = pi.property_id
+       WHERE p.owner_id = $1
+       GROUP BY p.id
+       ORDER BY p.created_at DESC`,
+      [req.user.userId],
+    );
+    res.status(200).json({ properties: result.rows });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -432,5 +476,6 @@ module.exports = {
   updateProperty,
   getProperties,
   getPropertyById,
+  getUserProperties,
   deleteProperty,
 };
