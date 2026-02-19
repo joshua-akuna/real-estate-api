@@ -44,4 +44,8 @@ const deleteFromCloudinary = async (publicId) => {
   }
 };
 
-module.exports = { uploadToCloudinary, upLoadMultipleImgages };
+module.exports = {
+  uploadToCloudinary,
+  upLoadMultipleImgages,
+  deleteFromCloudinary,
+};
