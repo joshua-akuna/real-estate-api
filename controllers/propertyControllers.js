@@ -103,7 +103,7 @@ const getProperties = async (req, res, next) => {
        LIMIT $${paramCount} OFFSET $${paramCount + 1}`,
       [...queryParams, limit, offset],
     );
-    console.log(whereClause, queryParams);
+    // console.log(whereClause, queryParams);
 
     // returns a response
     res.status(201).json({
