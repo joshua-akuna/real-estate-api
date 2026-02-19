@@ -1,4 +1,4 @@
-const { body, param } = require('express-validator');
+const { body, param, query } = require('express-validator');
 
 // User validation rules
 const registerValidator = [
@@ -99,10 +99,27 @@ const deletePropertyValidator = [
   param('id').isUUID().withMessage('Invalid property ID'),
 ];
 
+const paginationValidator = [
+  query('page')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Page must be a positive integer'),
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be between 1 and 100'),
+];
+
+const getPropertyValidator = [
+  param('id').isUUID().withMessage('Invalid property ID'),
+];
+
 module.exports = {
   registerValidator,
   loginValidator,
   creatPropertyValidators,
   updatePropertyValidator,
   deletePropertyValidator,
+  paginationValidator,
+  getPropertyValidator,
 };
