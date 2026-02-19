@@ -7,43 +7,18 @@ const authenticate = require('../middleware/authenticate');
 const {
   getProperties,
   createProperty,
+  updateProperty,
   getPropertyById,
   deleteProperty,
 } = require('../controllers/propertyControllers');
-
-// Validation rules for property creation
-const propertyValidationRules = [
-  body('title').trim().notEmpty().withMessage('Title is required'),
-  body('description').optional().trim(),
-  body('type').isIn(['sale', 'rent']).withMessage('Type must be sale or rent'),
-  body('property_type')
-    .trim()
-    .notEmpty()
-    .withMessage('Property type is required.'),
-  body('price')
-    .isFloat({ min: 0 })
-    .withMessage('Price must be a positive number'),
-  body('address').trim().notEmpty().withMessage('Address is required'),
-  body('city').trim().notEmpty().withMessage('City is required'),
-  body('state').trim().notEmpty().withMessage('State is required'),
-  body('country').trim().notEmpty().withMessage('Country is required'),
-  body('bedrooms')
-    .optional()
-    .isInt({ min: 0 })
-    .withMessage('Bedrooms must be positive integer'),
-  body('bathrooms')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Bathrooms must be a positive number'),
-  body('area')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Area must be a postive number'),
-];
+const {
+  creatPropertyValidators,
+  updatePropertyValidator,
+  deletePropertyValidator,
+} = require('../middleware/validators');
 
 // public routes
 router.get('/', getProperties);
-
 router.get('/:id', getPropertyById);
 
 // protected routes
@@ -51,15 +26,10 @@ router.post(
   '/',
   authenticate,
   upload.array('images', 10),
-  propertyValidationRules,
+  creatPropertyValidators,
   createProperty,
 );
-
-router.delete('/:id', authenticate, deleteProperty);
-
-router.put('/:id', (req, res) => {
-  const propertyId = req.params.id;
-  res.json({ message: `Property with ID: ${propertyId} updated` });
-});
+router.put('/:id', authenticate, updatePropertyValidator, updateProperty);
+router.delete('/:id', authenticate, deletePropertyValidator, deleteProperty);
 
 module.exports = router;
