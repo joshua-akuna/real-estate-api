@@ -1,10 +1,9 @@
-const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-const { query } = require('../config/db');
+const { query, pool } = require('../config/db');
 const { sendResetEmail } = require('../config/email');
 const { uploadToCloudinary } = require('../service/cloudinaryService');
 const { validationResult } = require('express-validator');
