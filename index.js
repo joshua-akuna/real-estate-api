@@ -9,6 +9,7 @@ const errorHandler = require('./middleware/errorHandler');
 
 const authRoutes = require('./routes/authRoute');
 const propertyRoutes = require('./routes/propertyRoute');
+const favoriteRoutes = require('./routes/favoriteRoute');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -42,6 +43,7 @@ app.use(passport.session());
 // Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/properties', propertyRoutes);
+app.use('/api/v1/favorites', favoriteRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {
