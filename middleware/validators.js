@@ -118,6 +118,10 @@ const toggleFavoriteValidator = [
   body('property_id').isUUID().withMessage('Invalid property ID'),
 ];
 
+const isFavoriteValidator = [
+  param('property_id').isUUID().withMessage('Invalid property ID'),
+];
+
 module.exports = {
   registerValidator,
   loginValidator,
@@ -127,4 +131,5 @@ module.exports = {
   paginationValidator,
   getPropertyValidator,
   toggleFavoriteValidator,
+  isFavoriteValidator,
 };
