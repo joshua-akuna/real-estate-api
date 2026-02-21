@@ -122,6 +122,13 @@ const isFavoriteValidator = [
   param('property_id').isUUID().withMessage('Invalid property ID'),
 ];
 
+const sendMessageValidator = [
+  body('receiver_id').isUUID().withMessage('Invalid receiver ID'),
+  body('property_id').optional().isUUID().withMessage('Invalid property ID'),
+  body('subject').trim().notEmpty().withMessage('Subject is required'),
+  body('message').trim().notEmpty().withMessage('Message is required'),
+];
+
 module.exports = {
   registerValidator,
   loginValidator,
@@ -132,4 +139,5 @@ module.exports = {
   getPropertyValidator,
   toggleFavoriteValidator,
   isFavoriteValidator,
+  sendMessageValidator,
 };
