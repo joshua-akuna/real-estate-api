@@ -49,6 +49,7 @@ const toggleFavorites = async (req, res, next) => {
 };
 
 const getFavorites = async (req, res, next) => {
+  const user_id = req.user.userId;
   try {
     const result = await query(
       `SELECT 
@@ -74,10 +75,11 @@ const getFavorites = async (req, res, next) => {
        WHERE f.user_id = $1
        GROUP BY p.id, u.id, f.created_at
        ORDER BY f.created_at DESC`,
-      [req.user.userId],
+      [user_id],
     );
     res.status(200).json({
       success: true,
+      user_id: req.user.userId,
       favorites: result.rows,
     });
   } catch (error) {
@@ -85,4 +87,27 @@ const getFavorites = async (req, res, next) => {
   }
 };
 
-module.exports = { toggleFavorites, getFavorites };
+const checkFavorite = async (req, res, next) => {
+  try {
+    // checks for validator errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    // gets property_id from params
+    const { property_id } = req.params;
+    // query database
+    const result = await query(
+      `SELECT * FROM favorites WHERE user_id = $1 AND property_id = $2`,
+      [req.user.userId, property_id],
+    );
+    res.status(200).json({
+      success: true,
+      isFavorited: result.rows.length > 0,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { toggleFavorites, getFavorites, checkFavorite };
