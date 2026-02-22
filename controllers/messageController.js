@@ -43,4 +43,55 @@ const sendMessage = async (req, res, next) => {
   }
 };
 
-module.exports = { sendMessage };
+const getInbox = async (req, res, next) => {
+  try {
+    const result = await query(
+      `SELECT 
+          m.*,
+          sender.full_name as sender_name, 
+          sender.email as sender_email, 
+          sender.avatar_url as sender_avatar, 
+          p.title as property_title 
+        FROM messages m 
+        JOIN users sender ON m.sender_id = sender.id 
+        LEFT JOIN properties p ON m.property_id = p.id 
+        WHERE m.receiver_id = $1 
+        ORDER BY m.created_at DESC`,
+      [req.user.userId],
+    );
+    // sends a response
+    res.status(200).json({
+      success: true,
+      profile_id: req.user.userId,
+      messages: result.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getSentMessages = async (req, res, next) => {
+  try {
+    // queries the database
+    const result = await query(
+      `SELECT 
+        m.*,
+        receiver.full_name as receiver_name,
+        receiver.email as receiver_email,
+        receiver.avatar_url as receiver_avatar,
+        p.title as property_title
+       FROM messages m
+       JOIN users receiver ON m.receiver_id = receiver.id
+       LEFT JOIN properties p ON m.property_id = p.id
+       WHERE m.sender_id = $1
+       ORDER BY m.created_at DESC`,
+      [req.user.userId],
+    );
+    // sends a response
+    res.status(200).json({ success: true, messages: result.rows });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { sendMessage, getInbox, getSentMessages };
