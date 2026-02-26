@@ -13,9 +13,9 @@ const sendMessage = async (req, res, next) => {
 
     // checks that receiver is not sender, can't send message to self
     if (receiver_id === req.user.userId) {
-      res
+      return res
         .status(400)
-        .json({ message: "Unauthorised: Can't send message to user" });
+        .json({ message: "Unauthorised: Can't send message to self" });
     }
 
     // Checks if receiver exists
@@ -94,4 +94,33 @@ const getSentMessages = async (req, res, next) => {
   }
 };
 
-module.exports = { sendMessage, getInbox, getSentMessages };
+// get message thread between users
+const getMessageThread = async (req, res, next) => {
+  try {
+    // get the user id as a param
+    const { user_id } = req.params;
+    // query the database fot message thread
+    const result = await query(
+      `SELECT 
+        m.*,
+        sender.full_name as sender_name,
+        sender.avatar_url as sender_avatar,
+        receiver.full_name as receiver_name,
+        receiver.avatar_url as receiver_avatar,
+        p.title as property_title
+       FROM messages m
+       JOIN users sender ON m.sender_id = sender.id
+       JOIN users receiver ON m.receiver_id = receiver.id
+       LEFT JOIN properties p ON m.property_id = p.id
+       WHERE (m.sender_id = $1 AND m.receiver_id = $2)
+          OR (m.sender_id = $2 AND m.receiver_id = $1)
+       ORDER BY m.created_at ASC`,
+      [req.user.userId, user_id],
+    );
+    res.json({ success: true, messages: result.rows });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { sendMessage, getInbox, getSentMessages, getMessageThread };
