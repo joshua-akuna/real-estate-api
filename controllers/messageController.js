@@ -140,10 +140,25 @@ const markAsRead = async (req, res, next) => {
         .json({ success: false, messsage: 'Message not found' });
     }
     await query(`UPDATE messages SET is_read = TRUE WHERE id = $1`, [id]);
-    res.json({ success: true, message: 'Message marked as read' });
+    res.json(201).json({ success: true, message: 'Message marked as read' });
   } catch (error) {
     next(error);
   }
+};
+
+// gets the number of unread messages for user
+const getUnreadCount = async (req, res, next) => {
+  try {
+    // query the number of unread message for a recipient
+    const result = await query(
+      `SELECT COUNT(*) FROM messages 
+      WHERE receiver_id = $1 AND is_read = FALSE`,
+      [req.user.userId],
+    );
+    res
+      .status(200)
+      .json({ success: true, unreadCount: parseInt(result.rows[0].count) });
+  } catch (error) {}
 };
 
 module.exports = {
@@ -152,4 +167,5 @@ module.exports = {
   getSentMessages,
   getMessageThread,
   markAsRead,
+  getUnreadCount,
 };
