@@ -123,4 +123,33 @@ const getMessageThread = async (req, res, next) => {
   }
 };
 
-module.exports = { sendMessage, getInbox, getSentMessages, getMessageThread };
+const markAsRead = async (req, res, next) => {
+  try {
+    // get id from req params
+    const { id } = req.params;
+    // check if message exists and current user is receiver
+    const checkResult = await query(
+      `SELECT * FROM messages 
+      WHERE id = $1 AND receiver_id = $2`,
+      [id, req.user.userId],
+    );
+    // checks for message
+    if (checkResult.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, messsage: 'Message not found' });
+    }
+    await query(`UPDATE messages SET is_read = TRUE WHERE id = $1`, [id]);
+    res.json({ success: true, message: 'Message marked as read' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  sendMessage,
+  getInbox,
+  getSentMessages,
+  getMessageThread,
+  markAsRead,
+};
