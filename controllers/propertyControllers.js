@@ -471,6 +471,59 @@ const deleteProperty = async (req, res, next) => {
   }
 };
 
+const getPropertyForEdit = async (req, res, next) => {
+  // check express validator errors
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    // console.log(errors.array());
+    return res.status(400).json({ errors: errors.array() });
+  }
+  try {
+    const { id } = req.params;
+
+    // query database
+    const result = await query(
+      `SELECT 
+        p.*,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', pi.id,
+              'image_url', pi.image_url,
+              'cloudinary_public_id', pi.cloudinary_public_id,
+              'image_order', pi.image_order
+            ) ORDER BY pi.image_order
+          ) FILTER (WHERE pi.id IS NOT NULL),
+          '[]'
+        ) as images
+       FROM properties p
+       LEFT JOIN property_images pi ON p.id = pi.property_id
+       WHERE p.id = $1
+       GROUP BY p.id`,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Property not found' });
+    }
+
+    const property = result.rows[0];
+
+    if (property.owner_id !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorised to edit this property',
+      });
+    }
+
+    res.json({ success: true, property });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createProperty,
   updateProperty,
@@ -478,4 +531,5 @@ module.exports = {
   getPropertyById,
   getUserProperties,
   deleteProperty,
+  getPropertyForEdit,
 };

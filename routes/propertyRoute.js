@@ -11,6 +11,7 @@ const {
   getPropertyById,
   deleteProperty,
   getUserProperties,
+  getPropertyForEdit,
 } = require('../controllers/propertyControllers');
 const {
   creatPropertyValidators,
@@ -31,6 +32,7 @@ router.post(
 );
 router.put('/:id', authenticate, updatePropertyValidator, updateProperty);
 router.delete('/:id', authenticate, deletePropertyValidator, deleteProperty);
+router.get('/:id/edit', authenticate, getPropertyValidator, getPropertyForEdit);
 
 // public routes
 router.get('/', paginationValidator, getProperties);
