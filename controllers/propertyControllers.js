@@ -524,6 +524,20 @@ const getPropertyForEdit = async (req, res, next) => {
   }
 };
 
+const deletePropertyImage = (req, res) => {
+  res.json({ message: 'deleting current image' });
+};
+
+const updatePropertyImages = (req, res) => {
+  // check express validator errors
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    // console.log(errors.array());
+    return res.status(400).json({ errors: errors.array() });
+  }
+  res.json({ message: 'Updating current property images' });
+};
+
 module.exports = {
   createProperty,
   updateProperty,
@@ -532,4 +546,6 @@ module.exports = {
   getUserProperties,
   deleteProperty,
   getPropertyForEdit,
+  deletePropertyImage,
+  updatePropertyImages,
 };

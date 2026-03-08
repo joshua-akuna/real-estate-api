@@ -12,6 +12,8 @@ const {
   deleteProperty,
   getUserProperties,
   getPropertyForEdit,
+  deletePropertyImage,
+  updatePropertyImages,
 } = require('../controllers/propertyControllers');
 const {
   creatPropertyValidators,
@@ -33,6 +35,14 @@ router.post(
 router.put('/:id', authenticate, updatePropertyValidator, updateProperty);
 router.delete('/:id', authenticate, deletePropertyValidator, deleteProperty);
 router.get('/:id/edit', authenticate, getPropertyValidator, getPropertyForEdit);
+router.delete('/:id/images/:imageId', authenticate, deletePropertyImage);
+router.put(
+  '/:id/images',
+  authenticate,
+  upload.array('images', 10),
+  getPropertyValidator,
+  updatePropertyImages,
+);
 
 // public routes
 router.get('/', paginationValidator, getProperties);
