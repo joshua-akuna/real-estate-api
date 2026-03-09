@@ -99,6 +99,11 @@ const deletePropertyValidator = [
   param('id').isUUID().withMessage('Invalid property ID'),
 ];
 
+const deletePropertyImageValidator = [
+  param('id').isUUID().withMessage('Invalid property ID'),
+  param('imageId').isUUID().withMessage('Invalid image ID'),
+];
+
 const paginationValidator = [
   query('page')
     .optional()
@@ -135,6 +140,7 @@ module.exports = {
   creatPropertyValidators,
   updatePropertyValidator,
   deletePropertyValidator,
+  deletePropertyImageValidator,
   paginationValidator,
   getPropertyValidator,
   toggleFavoriteValidator,
