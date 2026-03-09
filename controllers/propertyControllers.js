@@ -6,6 +6,7 @@ const {
   deleteFromCloudinary,
 } = require('../service/cloudinaryService');
 
+// get the information for all properties
 const getProperties = async (req, res, next) => {
   try {
     // check express validator errors
@@ -326,6 +327,7 @@ const createProperty = async (req, res, next) => {
   }
 };
 
+// Update the information for a property
 const updateProperty = async (req, res, next) => {
   try {
     // check express validator errors
@@ -447,7 +449,7 @@ const deleteProperty = async (req, res, next) => {
         .status(403)
         .json({ error: 'Unauthorized to delete this property' });
     }
-    // Get all images to delete from Cloudinary
+    // Get all images to delete from db
     const images = await client.query(
       'SELECT cloudinary_public_id FROM property_images WHERE property_id = $1',
       [id],
@@ -471,6 +473,7 @@ const deleteProperty = async (req, res, next) => {
   }
 };
 
+// returns the information for a property in the Edit Property page
 const getPropertyForEdit = async (req, res, next) => {
   // check express validator errors
   const errors = validationResult(req);
@@ -524,18 +527,111 @@ const getPropertyForEdit = async (req, res, next) => {
   }
 };
 
+// delete a single image for a property
 const deletePropertyImage = (req, res) => {
   res.json({ message: 'deleting current image' });
 };
 
-const updatePropertyImages = (req, res) => {
+// updates the property for an image
+const updatePropertyImages = async (req, res, next) => {
   // check express validator errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     // console.log(errors.array());
     return res.status(400).json({ errors: errors.array() });
   }
-  res.json({ message: 'Updating current property images' });
+  // get postgres client
+  const client = await pool.connect();
+
+  try {
+    // get property id from request parameters
+    const { id } = req.params;
+    // start db query
+    await client.query('BEGIN');
+    // check property ownership
+    const checkResult = await client.query(
+      'SELECT owner_id FROM properties WHERE id = $1',
+      [id],
+    );
+
+    if (checkResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res
+        .status(404)
+        .json({ message: 'Property not found', success: false });
+    }
+
+    if (checkResult.rows[0].owner_id !== req.user.userId) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to update this property',
+      });
+    }
+    // get current images
+    const existingImages = await client.query(
+      `SELECT * FROM property_images 
+      WHERE property_id = $1 
+      ORDER BY image_order`,
+      [id],
+    );
+    // delete existing images
+    const deletePromises = existingImages.rows.map((img) =>
+      deleteFromCloudinary(img.cloudinary_public_id),
+    );
+    await Promise.all(deletePromises);
+    // delete images from database
+    await client.query(`DELETE FROM property_images WHERE property_id = $1`, [
+      id,
+    ]);
+
+    // upload new images
+    if (req.files && req.files.length > 0) {
+      if (req.files.length > 10) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          success: false,
+          message: 'Maximum of 10 images allowed per property',
+        });
+      }
+      // upload images to cloudinary
+      const uploadResult = await upLoadMultipleImgages(
+        req.files,
+        `properties/${id}`,
+      );
+      // store new cloudinary images properties in postgres
+      for (let i = 0; i < uploadResult.length; i++) {
+        await client.query(
+          `INSERT INTO property_images (property_id, image_url, cloudinary_public_id, image_order) 
+          VALUES ($1, $2, $3, $4)`,
+          [id, uploadResult[i].secure_url, uploadResult[i].public_id, i + 1],
+        );
+      }
+    }
+
+    // get updated images
+    const imageResult = await client.query(
+      `SELECT id, image_url, image_order FROM property_images 
+      WHERE property_id = $1 ORDER BY image_order`,
+      [id],
+    );
+    // commit all queries
+    await client.query('COMMIT');
+    // send response
+    res.json({
+      success: true,
+      message: 'Property images updated successfully',
+      images: imageResult.rows,
+    });
+  } catch (error) {
+    // roll back queries if errors found
+    await client.query('ROLLBACK');
+    // pass error to error middleware
+    next(error);
+  } finally {
+    // release postgres client resources
+    client.release();
+  }
 };
 
 module.exports = {
