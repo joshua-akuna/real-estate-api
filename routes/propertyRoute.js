@@ -21,6 +21,7 @@ const {
   deletePropertyValidator,
   paginationValidator,
   getPropertyValidator,
+  deletePropertyImageValidator,
 } = require('../middleware/validators');
 
 // protected routes
@@ -32,10 +33,19 @@ router.post(
   creatPropertyValidators,
   createProperty,
 );
+// update a single property
 router.put('/:id', authenticate, updatePropertyValidator, updateProperty);
+// delete a single property
 router.delete('/:id', authenticate, deletePropertyValidator, deleteProperty);
 router.get('/:id/edit', authenticate, getPropertyValidator, getPropertyForEdit);
-router.delete('/:id/images/:imageId', authenticate, deletePropertyImage);
+// deletes a single image for a property
+router.delete(
+  '/:id/images/:imageId',
+  authenticate,
+  deletePropertyImageValidator,
+  deletePropertyImage,
+);
+// Update property images
 router.put(
   '/:id/images',
   authenticate,
@@ -45,7 +55,9 @@ router.put(
 );
 
 // public routes
+// get all properties
 router.get('/', paginationValidator, getProperties);
+// get information for a single property
 router.get('/:id', getPropertyValidator, getPropertyById);
 
 module.exports = router;
