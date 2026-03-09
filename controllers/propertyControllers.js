@@ -684,6 +684,10 @@ const updatePropertyImages = async (req, res, next) => {
   }
 };
 
+const addPropertyImages = (req, res) => {
+  res.json('Adding new images to property');
+};
+
 module.exports = {
   createProperty,
   updateProperty,
@@ -694,4 +698,5 @@ module.exports = {
   getPropertyForEdit,
   deletePropertyImage,
   updatePropertyImages,
+  addPropertyImages,
 };

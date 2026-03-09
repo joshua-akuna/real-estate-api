@@ -14,6 +14,7 @@ const {
   getPropertyForEdit,
   deletePropertyImage,
   updatePropertyImages,
+  addPropertyImages,
 } = require('../controllers/propertyControllers');
 const {
   creatPropertyValidators,
@@ -52,6 +53,14 @@ router.put(
   upload.array('images', 10),
   getPropertyValidator,
   updatePropertyImages,
+);
+// Add new images to a property
+router.post(
+  '/:id/images',
+  authenticate,
+  upload.array('images', 10),
+  getPropertyValidator,
+  addPropertyImages,
 );
 
 // public routes
