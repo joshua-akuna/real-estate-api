@@ -528,8 +528,57 @@ const getPropertyForEdit = async (req, res, next) => {
 };
 
 // delete a single image for a property
-const deletePropertyImage = (req, res) => {
-  res.json({ message: 'deleting current image' });
+const deletePropertyImage = async (req, res, next) => {
+  // check express validator errors
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    // console.log(errors.array());
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const { id, imageId } = req.params;
+
+    // check ownership
+    const checkOwner = await query(
+      `SELECT p.owner_id, pi.cloudinary_public_id
+      FROM properties p
+      JOIN property_images pi ON p.id = pi.property_id
+      WHERE p.id = $1 AND pi.id = $2`,
+      [id, imageId],
+    );
+    if (checkOwner.rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Image not found' });
+    }
+    if (checkOwner.rows[0].owner_id !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to delete this image',
+      });
+    }
+    // Delete from cloudinary
+    await deleteFromCloudinary(checkOwner.rows[0].cloudinary_public_id);
+    // Delete from database
+    await query(`DELETE FROM property_images WHERE id = $1`, [imageId]);
+
+    // Reorder remaining images
+    await query(
+      `UPDATE property_images 
+       SET image_order = subquery.new_order
+       FROM (
+         SELECT id, ROW_NUMBER() OVER (ORDER BY image_order) as new_order
+         FROM property_images
+         WHERE property_id = $1
+       ) AS subquery
+       WHERE property_images.id = subquery.id`,
+      [id],
+    );
+    res.json({ success: true, message: 'Image deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // updates the property for an image
@@ -546,6 +595,7 @@ const updatePropertyImages = async (req, res, next) => {
   try {
     // get property id from request parameters
     const { id } = req.params;
+
     // start db query
     await client.query('BEGIN');
     // check property ownership
