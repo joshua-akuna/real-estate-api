@@ -685,6 +685,12 @@ const updatePropertyImages = async (req, res, next) => {
 };
 
 const addPropertyImages = (req, res) => {
+  // check express validator errors
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    // console.log(errors.array());
+    return res.status(400).json({ errors: errors.array() });
+  }
   res.json('Adding new images to property');
 };
 
