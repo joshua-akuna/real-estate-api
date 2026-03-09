@@ -35,9 +35,6 @@ router.post(
 );
 // update a single property
 router.put('/:id', authenticate, updatePropertyValidator, updateProperty);
-// delete a single property
-router.delete('/:id', authenticate, deletePropertyValidator, deleteProperty);
-router.get('/:id/edit', authenticate, getPropertyValidator, getPropertyForEdit);
 // deletes a single image for a property
 router.delete(
   '/:id/images/:imageId',
@@ -45,6 +42,9 @@ router.delete(
   deletePropertyImageValidator,
   deletePropertyImage,
 );
+// delete a single property
+router.delete('/:id', authenticate, deletePropertyValidator, deleteProperty);
+router.get('/:id/edit', authenticate, getPropertyValidator, getPropertyForEdit);
 // Update property images
 router.put(
   '/:id/images',
